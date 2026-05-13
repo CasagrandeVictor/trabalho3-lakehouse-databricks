@@ -1,0 +1,18 @@
+site_name: Trabalho 3 — Lakehouse Databricks
+site_description: Pipeline de dados com Arquitetura Medalhão no Databricks
+site_author: Victor Casagrande
+
+theme:
+  name: material
+  palette:
+    primary: green
+    accent: orange
+
+nav:
+  - Home: index.md
+  - Arquitetura: arquitetura.md
+  - Pipeline: pipeline.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
