@@ -1,39 +1,54 @@
-# Arquitetura Medalhão
+# Arquitetura Medalhão — SeguroDB
+
+## Fonte de Dados
+
+**SeguroDB** — banco de dados SQL Server com 11 tabelas do domínio de seguros veiculares:
+
+| Tabela | Descrição |
+|---|---|
+| `regiao` | 5 regiões do Brasil |
+| `estado` | 27 estados + DF |
+| `municipio` | 30 municípios |
+| `marca` | Marcas de veículos |
+| `modelo` | Modelos de veículos |
+| `cliente` | Dados cadastrais dos segurados |
+| `endereco` | Endereços dos clientes |
+| `telefone` | Telefones dos clientes |
+| `carro` | Veículos segurados |
+| `apolice` | Apólices de seguro |
+| `sinistro` | Sinistros registrados |
 
 ## Camadas
 
 ### LANDING / DADOS
-Dados brutos extraídos diretamente das fontes originais e gravados no schema `landing` do Databricks.
-
-- Fontes relacionais → formato **CSV**
-- Fontes não relacionais → formato **JSON**
+Extração via JDBC do SQL Server → arquivos **CSV** gravados no schema `landing`.
 
 ### BRONZE
-Leitura dos arquivos da camada Landing e gravação no formato **Delta Lake** no schema `bronze`.  
-Sem transformações: dados brutos preservados.
+Leitura dos CSVs → gravação em **Delta Lake** no schema `bronze`. Dados brutos preservados.
 
 ### SILVER
-Aplicação de regras de **Data Quality** sobre os dados Bronze:
+Regras de Data Quality aplicadas tabela a tabela:
 
-- Remoção de duplicatas
-- Tratamento de nulos
-- Padronização de tipos
-- Validações de negócio
+- Remoção de duplicatas por chave primária
+- Remoção de nulos em campos obrigatórios
+- Padronização de strings (UPPER + TRIM)
+- Limpeza de CPF e CEP (só dígitos)
+- Validação de datas e valores monetários
 
-Resultado gravado no schema `silver` em formato Delta Lake.
-
-### GOLD
-Modelagem dimensional (Ralph Kimball) sobre os dados Silver:
-
-- Tabelas de dimensão (`dim_*`)
-- Tabelas fato (`fato_*`)
-
-Gravado no schema `gold` para consumo analítico.
-
-## Fluxo
+### GOLD — Modelo Estrela (Ralph Kimball)
 
 ```
-Fonte Relacional (PostgreSQL/Supabase)  ──┐
-                                          ├──► LANDING ──► BRONZE ──► SILVER ──► GOLD
-Fonte Não Relacional (MongoDB Atlas)    ──┘
+         dim_cliente
+              │
+dim_data ─── fato_apolice ─── dim_carro
+              │
+         fato_sinistro
 ```
+
+| Tabela | Tipo | Descrição |
+|---|---|---|
+| `dim_cliente` | Dimensão | Cliente + endereço + município + estado + região |
+| `dim_carro` | Dimensão | Carro + modelo + marca |
+| `dim_data` | Dimensão | Calendário gerado das datas de apólices e sinistros |
+| `fato_apolice` | Fato | Apólices com métricas de cobertura, franquia e vigência |
+| `fato_sinistro` | Fato | Sinistros com valor de prejuízo e tipo |
